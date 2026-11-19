@@ -97,7 +97,7 @@ A set of deployables tested together and shipped under one version number.
 _Avoid_: Release
 
 **Version manifest**:
-The list that pins the exact build of every deployable for one product version.
+The list that pins the exact build of every deployable, and the version of the shared contracts, for one product version.
 _Avoid_: Release manifest, lock file
 
 **Configuration revision**:
