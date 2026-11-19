@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "main",
+  "namedInputs": {
+    "own": [
+      "{projectRoot}/**/*"
+    ]
+  },
+  "targetDefaults": {
+    "lint": {
+      "cache": true,
+      "inputs": [
+        "own"
+      ]
+    },
+    "test": {
+      "cache": true,
+      "inputs": [
+        "own"
+      ]
+    },
+    "build": {
+      "cache": true,
+      "inputs": [
+        "own"
+      ]
+    }
+  },
+  "nxCloudId": "6aff3826cf6dbb1bfe99424e",
+  "analytics": false
+}

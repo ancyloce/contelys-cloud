@@ -1,0 +1,12 @@
+go.work
+go.work.sum
+node_modules/
+.nx/
+
+
+
+.nx/cache
+.nx/workspace-data
+.nx/migrate-runs
+.claude/worktrees
+.claude/settings.local.json
