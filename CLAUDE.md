@@ -10,7 +10,7 @@ The five default triage labels, recorded as a `Status:` line in each issue file.
 
 ### Domain docs
 
-Single-context: one `GLOSSARY.md` at the root and decision records in `docs/adr/`. See `docs/agents/domain.md`.
+One `GLOSSARY.md` at the root, for every team. System-wide decision records are in `docs/adr/`. A sub-repository keeps its detailed design in its own `docs/design.md` and the decision records that bind it alone in its own `docs/adr/`. See `docs/agents/domain.md`.
 
 ## Repository rules
 
