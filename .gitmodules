@@ -1,0 +1,6 @@
+[submodule "contracts"]
+	path = contracts
+	url = https://github.com/ancyloce/contelys-cloud-contracts.git
+[submodule "platform/edge"]
+	path = platform/edge
+	url = https://github.com/ancyloce/contelys-cloud-edge.git
