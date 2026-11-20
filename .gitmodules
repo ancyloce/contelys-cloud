@@ -4,3 +4,6 @@
 [submodule "platform/edge"]
 	path = platform/edge
 	url = ../contelys-cloud-edge.git
+[submodule "services/identity"]
+	path = services/identity
+	url = ../contelys-cloud-identity.git
