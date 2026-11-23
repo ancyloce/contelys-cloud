@@ -42,6 +42,10 @@ _Avoid_: Route config, gateway rule
 A kind of traffic at Edge that shares one set of limits, timeouts and sizes.
 _Avoid_: Profile, tier
 
+**Listener**:
+One of Edge's entry points, set apart by who can reach it and what traffic it carries, such as the external listener and the internal listener.
+_Avoid_: Port, endpoint
+
 **Parent repository**:
 The repository that brings the sub-repositories together and records which commit of each belongs to the tested set.
 _Avoid_: Umbrella repository
@@ -56,6 +60,26 @@ _Avoid_: Component repository, module
 The product that keeps credentials and login sessions. Identity is the domain built around it, not the product.
 _Avoid_: Identity for the product
 
+**Principal**:
+The application's own identity for one person, under an identifier that is never reused.
+_Avoid_: User ID, account, subject
+
+**Subject**:
+The identity provider's identifier for one of its accounts, unique only together with its issuer.
+_Avoid_: Principal, user ID
+
+**Admission**:
+Identity's decision, made for each request, that the caller's principal may use the application now.
+_Avoid_: Authorization, commit admission
+
+**Session**:
+Identity's record that a browser is signed in as a principal.
+_Avoid_: Login session, token
+
+**Editing session**:
+Collaboration's record that a principal is connected to a page for real-time editing.
+_Avoid_: Session on its own, live session, connection
+
 **Credential**:
 What a caller presents at Edge to prove who it is.
 _Avoid_: Bearer, token on its own
@@ -68,15 +92,53 @@ _Avoid_: Session token, access token
 A short-lived token that Identity issues to a deployable for a call made with no user, limited to one target deployable and to the operations that caller may perform.
 _Avoid_: Service token, machine token
 
-**Ticket**:
-A single-use, short-lived pass that lets a browser open one real-time connection.
-_Avoid_: Token, session
+**Limit key**:
+An opaque identifier of an authenticated caller, issued by Identity, by which Edge counts that caller's rate limit.
+_Avoid_: Rate-limit ID, user ID, principal ID
+
+**Strict revocation**:
+A revocation that is complete only when no protected write under the revoked authority can still commit.
+_Avoid_: Hard revocation, instant revocation
+
+**Authority version**:
+A counter that an authority raises with every strict revocation, so that a decision made under a lower value can be refused.
+_Avoid_: Epoch, generation
+
+**Write barrier**:
+The check inside a domain service's commit that refuses a protected write made under a revoked authority version.
+_Avoid_: Fence, commit admission, commit barrier
+
+### Organizations
+
+**Organization**:
+The body that owns projects and sites and that people belong to as members. No role reaches from one organization into another.
+_Avoid_: Workspace, account, team
+
+**Member**:
+A principal that belongs to an organization. One principal can be a member of several organizations.
+_Avoid_: User, collaborator
+
+**Scope**:
+An organization, a project or a site, as the thing a role is held on.
+_Avoid_: Resource, root, node
+
+**Role**:
+What a member may do on a scope and on the scopes inside it: Viewer, Editor, Publisher or Admin, each including the one before, and Owner on an organization alone.
+_Avoid_: Permission, binding, grant
+
+**Invitation**:
+An offer to the person behind one email address of one role on one scope of an organization.
+_Avoid_: Invite link, invite token
 
 ### Messaging
 
 **Event**:
 A record of a fact that has happened in a domain, published to any number of subscribers.
 _Avoid_: Message, worker event
+
+**Event family**:
+The events about one kind of thing in one domain, published on one topic and ordered by that thing's identifier.
+_Avoid_: Event stream, and "topic" for the family itself
 
 **Job**:
 A unit of work requested by a domain and performed by exactly one worker.
@@ -86,11 +148,33 @@ _Avoid_: Task, command, worker event
 A kind of job that has its own queue, concurrency limit and sandbox image.
 _Avoid_: Job type, worker type
 
+### Notifications
+
+**Notification**:
+The record of what one event obliges Notifications to send, with its recipients and template inputs frozen.
+_Avoid_: Intent, message
+
+**Notification delivery**:
+One notification on its way to one recipient through one channel.
+_Avoid_: Delivery on its own, send
+
+**Send attempt**:
+One submission of a notification delivery to the mail server.
+_Avoid_: Retry, try
+
+**Uncertain send**:
+A send attempt that ended without a reply from the mail server that decides whether it accepted the message.
+_Avoid_: Failed send, lost email, unknown
+
 ### Versions
 
 **Release**:
 An immutable, published build of a site, owned by Publishing.
 _Avoid_: Using "release" for a version of the product itself
+
+**Delivery map**:
+Publishing's projection that tells Public Delivery which release each hostname serves.
+_Avoid_: Routing table, active pointer
 
 **Product version**:
 A set of deployables tested together and shipped under one version number.
@@ -100,6 +184,14 @@ _Avoid_: Release
 The list that pins the exact build of every deployable, and the version of the shared contracts, for one product version.
 _Avoid_: Release manifest, lock file
 
+**Tooling image**:
+The image of one tested set that carries everything an installation needs besides the deployables' own images: the version manifest, the deployment code, the route fragments and the contracts.
+_Avoid_: Installer, deploy bundle
+
 **Configuration revision**:
 One identified state of the desired configuration.
 _Avoid_: Release, config version
+
+**Test baseline**:
+The exact version of a third-party product that a deployable is verified against, and the only version of that product that can be approved for production.
+_Avoid_: Supported version, target version, reference version
