@@ -1,0 +1,22 @@
+productVersion: 0.0.0
+contracts: null
+deployables:
+  assets: {version: null, digest: null}
+  authoring: {version: null, digest: null}
+  billing-entitlements: {version: null, digest: null}
+  collaboration: {version: null, digest: null}
+  components: {version: null, digest: null}
+  content: {version: null, digest: null}
+  edge: {version: null, digest: null}
+  event-center: {version: null, digest: null}
+  identity: {version: null, digest: null}
+  notifications: {version: null, digest: null}
+  organization-access: {version: null, digest: null}
+  pages: {version: null, digest: null}
+  projects: {version: null, digest: null}
+  public-delivery: {version: null, digest: null}
+  publishing: {version: null, digest: null}
+  search: {version: null, digest: null}
+  sites: {version: null, digest: null}
+  texts: {version: null, digest: null}
+  workers: {version: null, digest: null, sandboxes: {}}
