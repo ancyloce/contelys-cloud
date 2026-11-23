@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      # All history and tags: nx affected compares with the base commit, and the
+      # structure check looks up the version tags.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          # Every deployable is a submodule. Private sub-repositories need a credential that
+          # can read them: the default token reads only this repository.
+          submodules: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Structure check
+        run: node tools/structure-check.mjs
+      - name: Tests of the structure check
+        run: node --test tools/structure-check.test.mjs
+      - name: Targets that the change affects
+        env:
+          # A pull request compares with its base, a push with the commit before it.
+          # The first push to a branch has no commit before it, so every target runs.
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          # The CI access token of the Nx Cloud workspace that nx.json names.
+          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            npx nx run-many -t lint test build contract-test
+          else
+            npx nx affected -t lint test build contract-test --base="$BASE" --head="$GITHUB_SHA"
+          fi
