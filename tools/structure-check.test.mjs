@@ -101,9 +101,19 @@ test('1: a directory that the table does not list fails', (t) => {
   ]);
 });
 
-test('1: a deployable of the table without a directory fails', (t) => {
+test('1: a deployable that .gitmodules lists but that has no directory fails', (t) => {
   const failures = check(t, { 'platform/edge/project.json': null, 'platform/edge/.gitattributes': null });
   assert.ok(failures.includes('1. platform/edge/ is in the "Projects" table of docs/LAYOUT.md but does not exist'));
+});
+
+test('1, 2: a project that is neither committed nor mounted is left to statement 10', (t) => {
+  const failures = check(t, {
+    'platform/workers/project.json': null,
+    'platform/workers/.gitattributes': null,
+    'libs/service/project.json': null,
+    '.gitmodules': gitmodulesWith({ workers: null }),
+  });
+  assert.deepEqual(failures, ['10. .gitmodules has no entry for platform/workers']);
 });
 
 test('1: a manifest that misses a deployable or lists an unknown one fails', (t) => {

@@ -212,7 +212,14 @@ export function checkStructure(root, { trackedFiles, pointers, tagCommit }) {
   const manifest = readManifest(root);
   const submodules = readGitmodules(root);
 
-  // 1. The directories and the manifest list exactly the deployables of the table.
+  // A project that has no directory and no entry in .gitmodules is not committed yet: phase 1
+  // commits no placeholder. Statements 1 and 2 leave it out, and statement 10 still reports
+  // each such deployable until its sub-repository is mounted.
+  const mounted = new Set((submodules ?? []).map((entry) => entry.path));
+  const notCommitted = (dir) => !isDirectory(dir) && !mounted.has(dir);
+
+  // 1. Every directory is a deployable of the table, every committed deployable has its
+  // directory, and the manifest lists exactly the deployables of the table.
   for (const problem of manifest.unreadable) fail(1, problem);
   const listed = new Set(deployables.map((project) => project.dir));
   const present = DEPLOYABLE_PARENTS.flatMap((parent) => directoriesIn(parent).map((name) => `${parent}/${name}`));
@@ -220,7 +227,9 @@ export function checkStructure(root, { trackedFiles, pointers, tagCommit }) {
     if (!listed.has(dir)) fail(1, `${dir}/ is not a deployable in the "Projects" table of ${STANDARD}`);
   }
   for (const dir of listed) {
-    if (!present.includes(dir)) fail(1, `${dir}/ is in the "Projects" table of ${STANDARD} but does not exist`);
+    if (!present.includes(dir) && !notCommitted(dir)) {
+      fail(1, `${dir}/ is in the "Projects" table of ${STANDARD} but does not exist`);
+    }
   }
   for (const slug of manifest.entries.keys()) {
     if (!slugs.has(slug)) fail(1, `${MANIFEST} lists ${slug}, which is not a deployable`);
@@ -230,13 +239,14 @@ export function checkStructure(root, { trackedFiles, pointers, tagCommit }) {
   }
   if (manifest.contracts === undefined) fail(1, `${MANIFEST} has no "${CONTRACTS}:" line`);
 
-  // 2. Every project directory has a project.json named by the naming convention.
+  // 2. Every committed project directory has a project.json named by the naming convention.
   const projectFiles = new Map();
   for (const project of projects) {
     const expected = isDeployable(project) ? path.posix.basename(project.dir) : project.dir.replaceAll('/', '-');
     if (project.name !== expected) {
       fail(2, `the "Projects" table of ${STANDARD} names ${project.dir} "${project.name}" instead of "${expected}"`);
     }
+    if (notCommitted(project.dir)) continue;
     const file = `${project.dir}/project.json`;
     if (!isFile(file)) {
       const notCheckedOut =
