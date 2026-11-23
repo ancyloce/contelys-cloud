@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// PreToolUse hook for Bash and EnterWorktree: only the owner of the repository writes to Git
-// (CLAUDE.md, "Repository rules"). It refuses the Git commands that write, such as commit, tag,
-// push, add, checkout and branch changes, the GitHub CLI commands that write, and the
-// EnterWorktree tool. Reading, fetch, pull and clone pass. Exit code 2 refuses the call and shows
-// the reason to the agent.
+// PreToolUse hook for Bash: only the owner of the repository writes history (CLAUDE.md,
+// "Repository rules"). It refuses the Git commands that stage, commit, stash, reset, merge,
+// rebase, cherry-pick, revert, create or delete a tag, force a branch to move, or push, and the
+// GitHub CLI commands that do the same on GitHub: merging a pull request, a release's tag,
+// syncing a fork, and API writes to Git data, file contents and merges. Everything else passes,
+// worktrees, branches, checkouts, issues and pull request creation included. Exit code 2
+// refuses the call and shows the reason to the agent.
 //
 // It matches the text of a command, so it stops ordinary and accidental writes, not deliberate
 // evasion: a Git alias or a command assembled at run time passes.
@@ -21,26 +23,22 @@ const WRAPPED = /(?:\b(?:ba|z|da)?sh\s+-[A-Za-z]*c[A-Za-z]*|\beval|\bforeach)\s+
 
 const GLOBAL_WITH_VALUE = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env'])
 
-const ALWAYS_WRITES = new Set([
-  'commit', 'push', 'merge', 'rebase', 'cherry-pick', 'revert', 'am', 'reset', 'add', 'stage', 'rm', 'mv',
-  'restore', 'checkout', 'switch', 'clean', 'init', 'commit-tree', 'update-ref', 'update-index', 'read-tree',
-  'write-tree', 'filter-branch', 'filter-repo', 'replace', 'gc', 'prune', 'repack', 'maintenance', 'pack-refs',
-  'mktag', 'mktree',
+// Subcommands that always stage, commit, move history or publish it.
+const HISTORY_WRITES = new Set([
+  'add', 'stage', 'rm', 'mv', 'update-index', 'commit', 'commit-tree', 'push', 'merge', 'rebase',
+  'cherry-pick', 'revert', 'am', 'reset', 'update-ref', 'filter-branch', 'filter-repo', 'replace', 'mktag',
 ])
 
-const GH_WRITES = {
-  pr: ['create', 'merge', 'close', 'reopen', 'edit', 'ready', 'comment', 'review', 'lock', 'unlock', 'checkout', 'revert', 'update-branch'],
-  issue: ['create', 'close', 'reopen', 'edit', 'comment', 'delete', 'transfer', 'lock', 'unlock', 'pin', 'unpin', 'develop'],
-  release: ['create', 'edit', 'delete', 'delete-asset', 'upload'],
-  repo: ['create', 'delete', 'edit', 'rename', 'archive', 'unarchive', 'fork', 'sync', 'set-default', 'deploy-key'],
-  secret: ['set', 'delete', 'remove'],
-  variable: ['set', 'delete'],
-  label: ['create', 'edit', 'delete', 'clone'],
-  workflow: ['run', 'enable', 'disable'],
-  run: ['rerun', 'cancel', 'delete'],
-  gist: ['create', 'edit', 'delete', 'rename'],
-  cache: ['delete'],
+// GitHub CLI commands that merge, tag or push on GitHub.
+const GH_HISTORY_WRITES = {
+  pr: ['merge', 'update-branch', 'revert'],
+  release: ['create', 'edit', 'delete'],
+  repo: ['sync'],
 }
+// API endpoints that write Git data, file contents, merges or releases.
+const GH_API_HISTORY = /(^|\/)(git\/(refs|tags|commits|trees|blobs)|contents|merges|merge-upstream|update-branch|releases)(\/|$)|\/pulls\/\d+\/merge$/
+const GH_API_WITH_VALUE = ['-X', '--method', '-f', '-F', '--field', '--raw-field', '-H', '--header', '--input',
+  '-q', '--jq', '-t', '--template', '--hostname', '-p', '--preview', '--cache']
 
 const unquote = (token) => token.replace(/^['"]+|['"]+$/g, '')
 
@@ -61,23 +59,17 @@ function positionals(args, optionsWithValue = []) {
   return result
 }
 
-function gitWrite(sub, args) {
-  if (ALWAYS_WRITES.has(sub)) return true
+function gitHistoryWrite(sub, args) {
+  if (HISTORY_WRITES.has(sub)) return true
   const first = args[0]
   switch (sub) {
+    // A stash is a commit; listing and showing stashes write nothing.
     case 'stash': return !['list', 'show'].includes(first)
-    case 'worktree': return first !== 'list'
     case 'notes': return first !== undefined && !['list', 'show'].includes(first)
-    case 'reflog': return ['expire', 'delete'].includes(first)
-    case 'remote': return ['add', 'remove', 'rm', 'rename', 'set-url', 'set-head', 'set-branches', 'prune'].includes(first)
-    case 'submodule':
-      return ['add', 'deinit', 'set-branch', 'set-url', 'sync', 'absorbgitdirs'].includes(first) ||
-        (first === 'update' && hasAny(args, ['--remote']))
-    case 'sparse-checkout': return first !== 'list'
-    case 'bisect': return !['log', 'view', 'visualize', 'visualise'].includes(first)
-    case 'symbolic-ref': return hasAny(args, ['-d', '--delete']) || positionals(args).length >= 2
-    case 'hash-object': return hasAny(args, ['-w'])
     case 'apply': return hasAny(args, ['--index', '--cached', '-3', '--3way'])
+    case 'submodule': return first === 'add'
+    // The forced forms move or drop a branch that may hold history.
+    case 'branch': return hasAny(args, ['-f', '--force', '-D', '-M', '-C'])
     case 'tag': {
       const writes = ['-a', '--annotate', '-s', '--sign', '-u', '--local-user', '-f', '--force', '-d', '--delete',
         '-m', '--message', '-F', '--file', '-e', '--edit', '--create-reflog', '--cleanup', '--trailer']
@@ -85,28 +77,12 @@ function gitWrite(sub, args) {
       const withValue = ['--contains', '--no-contains', '--merged', '--no-merged', '--points-at', '--sort', '--format', '--color', '--column']
       return hasAny(args, writes) || (positionals(args, withValue).length > 0 && !hasAny(args, lists))
     }
-    case 'branch': {
-      const writes = ['-d', '-D', '--delete', '-m', '-M', '--move', '-c', '-C', '--copy', '-f', '--force', '-u',
-        '--set-upstream-to', '--unset-upstream', '--edit-description', '-t', '--track', '--no-track',
-        '--create-reflog', '--recurse-submodules']
-      const lists = ['-l', '--list', '-a', '--all', '-r', '--remotes', '-v', '--verbose', '--contains', '--no-contains',
-        '--merged', '--no-merged', '--points-at', '--show-current', '--format', '--sort', '--column']
-      const withValue = ['--contains', '--no-contains', '--merged', '--no-merged', '--points-at', '--sort', '--format', '--color', '--column', '--abbrev']
-      return hasAny(args, writes) || (positionals(args, withValue).length > 0 && !hasAny(args, lists))
-    }
-    case 'config': {
-      if (['set', 'unset', 'rename-section', 'remove-section', 'edit'].includes(first)) return true
-      if (hasAny(args, ['--add', '--unset', '--unset-all', '--replace-all', '--rename-section', '--remove-section', '-e', '--edit'])) return true
-      if (['get', 'list'].includes(first)) return false
-      if (hasAny(args, ['--get', '--get-all', '--get-regexp', '--get-urlmatch', '--list', '-l'])) return false
-      return positionals(args, ['--file', '-f', '--blob', '--type', '--default', '--comment']).length >= 2
-    }
     default: return false
   }
 }
 
-// Returns the refused command, such as "gh pr create", or null.
-function ghWrite(tokens) {
+// Returns the refused command, such as "gh pr merge", or null.
+function ghHistoryWrite(tokens) {
   let i = 0
   while (i < tokens.length && tokens[i].startsWith('-')) i += ['-R', '--repo', '--hostname'].includes(tokens[i]) ? 2 : 1
   const [group, action] = tokens.slice(i)
@@ -119,26 +95,28 @@ function ghWrite(tokens) {
       method = token.startsWith('--method=') ? token.slice(9) : /^-X./.test(token) ? token.slice(2) : args[at + 1]
     }
     const writes = method ? method.toUpperCase() !== 'GET' : hasAny(args, ['-f', '-F', '--field', '--raw-field', '--input'])
-    return writes ? 'gh api' : null
+    const [endpoint = ''] = positionals(args, GH_API_WITH_VALUE)
+    return writes && GH_API_HISTORY.test(endpoint.split('?')[0]) ? 'gh api' : null
   }
-  return (GH_WRITES[group] ?? []).includes(action) ? `gh ${group} ${action}` : null
+  if (group === 'repo' && action === 'create' && hasAny(tokens, ['--push'])) return 'gh repo create --push'
+  return (GH_HISTORY_WRITES[group] ?? []).includes(action) ? `gh ${group} ${action}` : null
 }
 
-// Returns the refused command, such as "git commit", or null when the command line writes nothing.
+// Returns the refused command, such as "git commit", or null when the command line writes no history.
 export function refusedCommand(commandLine) {
   for (const match of commandLine.matchAll(INVOCATION)) {
     const tool = match[2]
     const rest = commandLine.slice(match.index + match[0].length).split(END_OF_SIMPLE_COMMAND)[0]
     const tokens = rest.trim().split(/\s+/).filter(Boolean).map(unquote)
     if (tool === 'gh') {
-      const label = ghWrite(tokens)
+      const label = ghHistoryWrite(tokens)
       if (label) return label
       continue
     }
     let i = 0
     while (i < tokens.length && tokens[i].startsWith('-')) i += GLOBAL_WITH_VALUE.has(tokens[i]) ? 2 : 1
     const sub = tokens[i]
-    if (sub !== undefined && gitWrite(sub, tokens.slice(i + 1))) return `git ${sub}`
+    if (sub !== undefined && gitHistoryWrite(sub, tokens.slice(i + 1))) return `git ${sub}`
   }
   for (const match of commandLine.matchAll(WRAPPED)) {
     const inner = refusedCommand(match[2])
@@ -155,15 +133,11 @@ function main() {
     console.error(`git-writes hook: cannot read the hook input (${error.message}), so the call is not checked`)
     process.exit(1)
   }
-  const rule = 'Only the owner of the repository writes to Git (CLAUDE.md, "Repository rules"). ' +
-    'Leave the change in the working tree, report the changed files and propose the commit message.'
-  if (input.tool_name === 'EnterWorktree') {
-    console.error(`Blocked: a worktree is a Git write. ${rule}`)
-    process.exit(2)
-  }
   const refused = input.tool_name === 'Bash' ? refusedCommand(input.tool_input?.command ?? '') : null
   if (refused) {
-    console.error(`Blocked: "${refused}" writes to Git or GitHub. Reading, fetch, pull and clone are allowed. ${rule}`)
+    console.error(`Blocked: "${refused}" writes history. Only the owner of the repository stages, commits, ` +
+      'tags, merges and pushes (CLAUDE.md, "Repository rules"). Leave the change unstaged, report the ' +
+      'changed files and propose the commit message.')
     process.exit(2)
   }
 }
