@@ -10,3 +10,9 @@ node_modules/
 .nx/migrate-runs
 .claude/worktrees
 .claude/settings.local.json
+
+# Documents stay out of Git, except the layout standard, which the structure check reads in CI.
+# They are backed up outside the repository (CLAUDE.md, "Repository rules").
+/docs/*
+!/docs/LAYOUT.md
+/.scratch/
