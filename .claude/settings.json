@@ -1,0 +1,45 @@
+{
+  "extraKnownMarketplaces": {
+    "nx-claude-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "nrwl/nx-ai-agents-config"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "nx@nx-claude-plugins": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|EnterWorktree",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/git-writes.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "sandbox": {
+    "filesystem": {
+      "allowRead": [
+        "/tmp/.nx",
+        "~/.nx"
+      ],
+      "allowWrite": [
+        "/tmp/.nx",
+        "~/.nx"
+      ]
+    },
+    "network": {
+      "allowUnixSockets": [
+        "/tmp/.nx",
+        "~/.nx"
+      ]
+    }
+  }
+}
