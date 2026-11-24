@@ -127,8 +127,8 @@ contelys-cloud-<slug>/                   mounted at services/<slug>/, platform/<
 | `libs/service/template/` | The service template: a Go module of its own, without a `replace` directive, that the library's CI builds against the library's latest tag (ADR 0034). |
 | `apps/authoring/` | Authoring, mounted from the sub-repository `contelys-cloud-authoring`: the source of the authoring app and the `Dockerfile` of the image that serves it ([ADR 0013](./adr/0013-authoring-single-page-app.md), [ADR 0041](./adr/0041-authoring-app-static-file-host.md)). |
 | `contracts/` | The shared contracts, mounted from the sub-repository `contelys-cloud-contracts`. |
-| `contracts/openapi/<slug>/` | The OpenAPI contract of one domain service. Edge, Authoring and Public Delivery have no contract directory. |
-| `contracts/openapi/shared/` | Contracts that several deployables serve, such as the operation that installs a minimum authority version in every registered domain service ([ADR 0068](./adr/0068-minimum-authority-versions-are-installed-through-one-shared-operation.md)). The platform team owns them. |
+| `contracts/openapi/<slug>/` | The OpenAPI contract of one domain service, as one file `openapi.yaml` in OpenAPI 3.0.3, which oapi-codegen reads in full. Edge, Authoring and Public Delivery have no contract directory. |
+| `contracts/openapi/shared/` | Contracts that several deployables serve, such as the operation that installs a minimum authority version in every registered domain service ([ADR 0068](./adr/0068-minimum-authority-versions-are-installed-through-one-shared-operation.md)), and `problem.yaml`, the one error body of [ADR 0054](./adr/0054-one-error-body-in-every-contract.md), to which every contract refers. The platform team owns them. |
 | `contracts/events/` | Protobuf event schemas, as one buf module. |
 | `contracts/jobs/` | The job-request contract of Workers: the request API, the outcome report and the payload of each worker class. |
 | `contracts/buf.yaml` | The buf lint and breaking-change rules for event schemas. |
