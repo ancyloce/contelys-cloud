@@ -74,9 +74,10 @@ const BASE = {
   ].join('\n'),
 };
 
-// Writes BASE with the changes applied and checks it. A change of null leaves the file out,
-// and a path that ends in a slash makes an empty directory.
-function check(t, changes = {}, git = {}) {
+// Writes BASE with the changes applied and checks it, and returns the failures and the pending
+// findings. A change of null leaves the file out, and a path that ends in a slash makes an empty
+// directory.
+function run(t, changes = {}, git = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'structure-check-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   for (const [relative, content] of Object.entries({ ...BASE, ...changes })) {
@@ -90,6 +91,9 @@ function check(t, changes = {}, git = {}) {
   }
   return checkStructure(root, { trackedFiles: [], pointers: {}, tagCommit: () => null, ...git });
 }
+
+// The failures alone.
+const check = (t, changes, git) => run(t, changes, git).failures;
 
 test('a tree that follows the standard passes', (t) => {
   assert.deepEqual(check(t), []);
@@ -106,14 +110,14 @@ test('1: a deployable that .gitmodules lists but that has no directory fails', (
   assert.ok(failures.includes('1. platform/edge/ is in the "Projects" table of docs/LAYOUT.md but does not exist'));
 });
 
-test('1, 2: a project that is neither committed nor mounted is left to statement 10', (t) => {
-  const failures = check(t, {
+test('1, 2: a project that is neither committed nor mounted waits in statement 10', (t) => {
+  const result = run(t, {
     'platform/workers/project.json': null,
     'platform/workers/.gitattributes': null,
     'libs/service/project.json': null,
     '.gitmodules': gitmodulesWith({ workers: null }),
   });
-  assert.deepEqual(failures, ['10. .gitmodules has no entry for platform/workers']);
+  assert.deepEqual(result, { failures: [], pending: ['10. .gitmodules has no entry for platform/workers'] });
 });
 
 test('1: a manifest that misses a deployable or lists an unknown one fails', (t) => {
@@ -240,10 +244,11 @@ test('7: the version of the contracts needs its pointer at the commit its tag na
   assert.deepEqual(check(t, changes, { pointers: { contracts: 'ccc333' }, tagCommit }), []);
 });
 
-test('8: a missing CODEOWNERS file fails', (t) => {
-  assert.deepEqual(check(t, { CODEOWNERS: null }), [
-    '8. CODEOWNERS does not exist, so no path of the parent repository has an owning team',
-  ]);
+test('8: a missing CODEOWNERS file waits for the owner and does not fail', (t) => {
+  assert.deepEqual(run(t, { CODEOWNERS: null }), {
+    failures: [],
+    pending: ['8. CODEOWNERS does not exist, so no path of the parent repository has an owning team'],
+  });
 });
 
 test('8: a project directory of the parent repository without an owner fails', (t) => {
@@ -292,11 +297,20 @@ test('10: a missing .gitmodules file fails', (t) => {
 test('10: .gitmodules lists exactly the sub-repositories, each with its relative address', (t) => {
   const absolute = submodule('services/projects', 'projects').replace('../', 'https://example.test/');
   const changed = gitmodulesWith({ edge: null, projects: absolute, library: submodule('libs/service', 'libs-service') });
-  assert.deepEqual(check(t, { '.gitmodules': changed, 'libs/service/.gitattributes': ATTRIBUTES }), [
-    '10. .gitmodules gives services/projects the address https://example.test/contelys-cloud-projects.git instead of ../contelys-cloud-projects.git',
-    '10. .gitmodules has no entry for platform/edge',
-    '10. .gitmodules lists libs/service, which is not a sub-repository',
-  ]);
+  assert.deepEqual(run(t, { '.gitmodules': changed, 'libs/service/.gitattributes': ATTRIBUTES }), {
+    failures: [
+      '10. .gitmodules gives services/projects the address https://example.test/contelys-cloud-projects.git instead of ../contelys-cloud-projects.git',
+      '10. .gitmodules lists libs/service, which is not a sub-repository',
+    ],
+    pending: ['10. .gitmodules has no entry for platform/edge'],
+  });
+});
+
+test('10: a deployable without an entry fails when it is committed or has a submodule pointer', (t) => {
+  const changes = { '.gitmodules': gitmodulesWith({ edge: null }) };
+  const missing = '10. .gitmodules has no entry for platform/edge';
+  assert.ok(check(t, changes, { committed: ['platform/edge'] }).includes(missing));
+  assert.ok(check(t, changes, { pointers: { 'platform/edge': 'eee555' } }).includes(missing));
 });
 
 test('11: a sub-repository without the line-ending rule in its .gitattributes fails', (t) => {
@@ -309,7 +323,7 @@ test('11: a sub-repository without the line-ending rule in its .gitattributes fa
 
 test('11: a directory that .gitmodules does not list needs no .gitattributes', (t) => {
   const changes = { '.gitmodules': gitmodulesWith({ edge: null }), 'platform/edge/.gitattributes': null };
-  assert.deepEqual(check(t, changes), ['10. .gitmodules has no entry for platform/edge']);
+  assert.deepEqual(run(t, changes), { failures: [], pending: ['10. .gitmodules has no entry for platform/edge'] });
 });
 
 test('10: a sub-repository with submodules of its own fails', (t) => {

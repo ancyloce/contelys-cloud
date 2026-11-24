@@ -33,8 +33,8 @@ jobs:
       - run: npm ci
       - name: Structure check
         run: node tools/structure-check.mjs
-      # The steps after the structure check run also when it fails, as it does while its statements
-      # 8 and 10 wait for the owner of the repository, so that they still report and the job stays red.
+      # The steps after the structure check run also when it fails, so that they still report. The
+      # check lists the findings that wait for the owner of the repository without failing on them.
       - name: Tests of the structure check
         if: ${{ !cancelled() }}
         run: node --test tools/structure-check.test.mjs
