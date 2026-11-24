@@ -25,12 +25,20 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      # Go for the Go projects' targets: at least the version that their go.mod declares.
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: "1.27"
+          cache-dependency-path: "**/go.sum"
       - run: npm ci
       - name: Structure check
         run: node tools/structure-check.mjs
       - name: Tests of the structure check
         run: node --test tools/structure-check.test.mjs
       - name: Targets that the change affects
+        # Also after a failed structure check, whose statements 8 and 10 wait for the owner of the
+        # repository, so that the targets still run and the job stays red.
+        if: ${{ !cancelled() }}
         env:
           # A pull request compares with its base, a push with the commit before it.
           # The first push to a branch has no commit before it, so every target runs.
@@ -39,7 +47,7 @@ jobs:
           NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
         run: |
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-            npx nx run-many -t lint test build contract-test
+            npx nx run-many -t lint test build contract-test scenario-test
           else
-            npx nx affected -t lint test build contract-test --base="$BASE" --head="$GITHUB_SHA"
+            npx nx affected -t lint test build contract-test scenario-test --base="$BASE" --head="$GITHUB_SHA"
           fi
