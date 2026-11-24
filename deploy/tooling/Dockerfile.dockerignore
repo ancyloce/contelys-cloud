@@ -2,6 +2,7 @@
 # carries enters it.
 *
 !version-manifest.yaml
+!contracts/openapi
 !deploy/compose/compose.yaml
 !deploy/compose/instances.yaml
 !deploy/compose/installation.yaml

@@ -2,12 +2,15 @@
 # The commands of the tooling image (ADR 0058) for the single-VM evaluation profile.
 #
 #   tooling compose <dir>     writes the Compose project into <dir>, with the images that the version
-#                             manifest pins; docker compose up then starts it
+#                             manifest pins; docker compose up then starts it. It needs the Docker
+#                             socket mounted, to learn the group that may use it
 #   tooling render            creates the certificate authority at the first start, issues Edge's
 #                             certificate and renders Edge's configuration into /state
 #   tooling certificate <name>  issues a certificate for the workload <name> from the authority
 #
 # render and certificate run as the user apisix (uid 636), so that Edge can read what they write.
+# render also needs the Docker socket, the host's network and EDGE_IMAGE, the pinned image of Edge,
+# because its trial load starts a throwaway Edge through the Docker engine (Edge ADR 0004).
 set -eu
 
 SET=/opt/contelys
@@ -40,6 +43,7 @@ gateway() {
 compose() {
   out=$1
   [ -d "$out" ] || fail "compose: $out is not a directory"
+  [ -S /var/run/docker.sock ] || fail "compose: mount the Docker socket with -v /var/run/docker.sock:/var/run/docker.sock:ro, so that the group that may use it is known"
   edge=$(digest edge)
   case $edge in
     sha256:*) ;;
@@ -52,6 +56,7 @@ compose() {
     echo "TOOLING_IMAGE=$TOOLING_IMAGE"
     echo "EDGE_IMAGE=$REGISTRY/edge@$edge"
     echo "HOST_GATEWAY=$(gateway)"
+    echo "DOCKER_GID=$(stat -c %g /var/run/docker.sock)"
   } > "$out/.env"
   # Compose checks every bind source when it creates the containers, before render has run, so the
   # files that render later renames into place exist from the start.
@@ -100,6 +105,7 @@ setting() {
 }
 
 render() {
+  [ -n "${EDGE_IMAGE:-}" ] || fail "render: EDGE_IMAGE names no image of edge"
   authority
   application=$(setting application_hostname)
   authentication=$(setting authentication_hostname)
@@ -107,7 +113,8 @@ render() {
   issue "$STATE/secrets" application "$application" "$authentication"
   cp "$CA/ca.crt" "$STATE/secrets/ca.crt"
   edge render --instances /etc/contelys/instances.yaml --installation /etc/contelys/installation.yaml \
-    --fragments "$SET/fragments" --secrets "$STATE/secrets" --revision "$COMMIT" --out "$STATE/rendered"
+    --fragments "$SET/fragments" --contracts "$SET/contracts" --secrets "$STATE/secrets" --revision "$COMMIT" \
+    --image "$EDGE_IMAGE" --out "$STATE/rendered"
 }
 
 certificate() {

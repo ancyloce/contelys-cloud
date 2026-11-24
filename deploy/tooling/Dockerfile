@@ -9,8 +9,8 @@
 #     --tag "contelys/tooling:$(git rev-parse HEAD)" .
 #
 # It carries what rendering needs so far: Edge's renderer, the version manifest, the route fragments
-# of the set, the Compose profile and OpenSSL for the evaluation profile's certificate authority.
-# ansible-core, the contracts and Identity's realm join with issue 02 and Identity's ticket 22.
+# and the OpenAPI contracts of the set, the Compose profile and OpenSSL for the evaluation profile's
+# certificate authority. ansible-core and Identity's realm join with issue 02 and Identity's ticket 22.
 
 # Edge's renderer, built from Edge's sub-repository (ADR 0067).
 FROM golang:1.27.0-trixie@sha256:df98008ecd2b0ecc9f0a94d1b07e3564a9c92b555369b33d9b5f60d0765b2db7 AS renderer
@@ -43,6 +43,8 @@ ENV COMMIT=${COMMIT} TOOLING_IMAGE=${TOOLING_IMAGE} REGISTRY=${REGISTRY}
 COPY --from=renderer /out/edge /usr/local/bin/edge
 COPY --from=fragments /out/fragments /opt/contelys/fragments
 COPY version-manifest.yaml /opt/contelys/version-manifest.yaml
+# The renderer checks every path of a fragment against its deployable's contract (Edge ADR 0004).
+COPY contracts/openapi /opt/contelys/contracts
 COPY deploy/compose/compose.yaml deploy/compose/instances.yaml deploy/compose/installation.yaml /opt/contelys/compose/
 COPY deploy/tooling/tooling.sh /usr/local/bin/tooling
 ENTRYPOINT ["/usr/local/bin/tooling"]
