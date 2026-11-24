@@ -1,0 +1,35 @@
+# The check of Edge's ticket 06, which is not part of the shipped profile: a stub in place of Projects
+# (X4), until issue 01 brings Projects itself. Copy this file and check/ into the Compose project, then:
+#
+#   docker compose -f compose.yaml -f compose.check.yaml up -d
+services:
+  render:
+    volumes:
+      - ./check/instances.yaml:/etc/contelys/instances.yaml:ro
+      - ./check/fragments:/opt/contelys/fragments:ro
+      - ./check/contracts:/opt/contelys/contracts:ro
+
+  projects-certificate:
+    image: ${TOOLING_IMAGE}
+    command: [certificate, projects]
+    user: "636:636"
+    network_mode: none
+    volumes:
+      - ./state:/state
+
+  # A TLS server that answers every request with what it received. Edge verifies its certificate
+  # against the name projects and sends that name as Host.
+  projects:
+    image: traefik/whoami:v1.11.0@sha256:200689790a0a0ea48ca45992e0450bc26ccab5307375b41c84dfc4f2475937ab
+    command: [--port, "8443", --cert, /certs/projects.crt, --key, /certs/projects.key]
+    depends_on:
+      projects-certificate:
+        condition: service_completed_successfully
+    networks: [projects]
+    ports:
+      - "${HOST_GATEWAY}:8443:8443"
+    volumes:
+      - ./state/certs:/certs:ro
+
+networks:
+  projects: {}

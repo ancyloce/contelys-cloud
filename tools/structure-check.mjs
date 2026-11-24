@@ -190,13 +190,19 @@ function readCodeowners(root) {
   return (dir) => rules.findLast(({ pattern }) => covers(pattern, dir))?.owned === true;
 }
 
-// Returns one line per false statement, each starting with the number of the statement.
+// Returns the false statements as failures, one line each, starting with the number of the
+// statement, and as pending the two findings that wait for the owner of the repository rather
+// than for a fix: CODEOWNERS, which step 4 of "Applying the standard" adds, and a deployable that
+// is neither mounted nor committed, which step 6 mounts. Pending findings do not fail the check.
 // The second argument comes from Git, and the tests pass their own: the tracked files that
-// statement 6 forbids, the submodule pointers by project directory, and a function that gives
-// the commit a version tag names in the sub-repository mounted at a directory, or null.
-export function checkStructure(root, { trackedFiles, pointers, tagCommit }) {
+// statement 6 forbids, the submodule pointers by project directory, the project directories that
+// hold committed files of the parent repository, and a function that gives the commit a version
+// tag names in the sub-repository mounted at a directory, or null.
+export function checkStructure(root, { trackedFiles, pointers, tagCommit, committed = [] }) {
   const failures = [];
+  const pending = [];
   const fail = (statement, message) => failures.push(`${statement}. ${message}`);
+  const wait = (statement, message) => pending.push(`${statement}. ${message}`);
   const at = (relative) => path.join(root, relative);
   const isDirectory = (relative) => existsSync(at(relative)) && statSync(at(relative)).isDirectory();
   const isFile = (relative) => existsSync(at(relative)) && statSync(at(relative)).isFile();
@@ -337,7 +343,7 @@ export function checkStructure(root, { trackedFiles, pointers, tagCommit }) {
   // 8. In CODEOWNERS every project directory that is not a sub-repository has an owner, and
   // no sub-repository's directory has one: its content is owned in the sub-repository.
   const hasOwner = readCodeowners(root);
-  if (hasOwner === null) fail(8, 'CODEOWNERS does not exist, so no path of the parent repository has an owning team');
+  if (hasOwner === null) wait(8, 'CODEOWNERS does not exist, so no path of the parent repository has an owning team');
   else {
     for (const project of projects) {
       if (isSubRepository(project)) {
@@ -375,7 +381,9 @@ export function checkStructure(root, { trackedFiles, pointers, tagCommit }) {
     for (const project of subRepositories) {
       const entry = submodules.find((candidate) => candidate.path === project.dir);
       const address = `../${subRepository(project.name)}.git`;
-      if (!entry) fail(10, `${GITMODULES} has no entry for ${project.dir}`);
+      // A deployable that is neither mounted nor committed waits for its sub-repository.
+      const waits = !(project.dir in pointers) && !committed.includes(project.dir);
+      if (!entry) (waits ? wait : fail)(10, `${GITMODULES} has no entry for ${project.dir}`);
       else if (entry.url !== address) fail(10, `${GITMODULES} gives ${project.dir} the address ${entry.url} instead of ${address}`);
     }
     for (const entry of submodules) {
@@ -400,7 +408,7 @@ export function checkStructure(root, { trackedFiles, pointers, tagCommit }) {
     if (!hasRule) fail(11, `${file} does not contain the line "${LINE_ENDING_RULE}"`);
   }
 
-  return failures;
+  return { failures, pending };
 }
 
 function git(root, ...args) {
@@ -422,14 +430,18 @@ function tagCommitIn(root, dir, tag) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const gitlinks = git(root, 'ls-files', '--stage', '--', ...DEPLOYABLE_PARENTS, CONTRACTS)
-    .map((line) => line.match(/^160000 ([0-9a-f]+) \d\t(.+)$/))
-    .filter(Boolean);
-  const failures = checkStructure(root, {
+  const staged = git(root, 'ls-files', '--stage', '--', ...DEPLOYABLE_PARENTS, CONTRACTS);
+  const gitlinks = staged.map((line) => line.match(/^160000 ([0-9a-f]+) \d\t(.+)$/)).filter(Boolean);
+  // The project directories that hold committed files of the parent repository itself.
+  const inProject = new RegExp(`^(?!160000 )\\d+ [0-9a-f]+ \\d\\t((?:${DEPLOYABLE_PARENTS.join('|')})/[^/]+)/`);
+  const committed = [...new Set(staged.map((line) => line.match(inProject)?.[1]).filter(Boolean))];
+  const { failures, pending } = checkStructure(root, {
     trackedFiles: git(root, 'ls-files', '--', ...NEVER_TRACKED.map((name) => `:(glob)**/${name}`)),
     pointers: Object.fromEntries(gitlinks.map(([, commit, dir]) => [dir, commit])),
     tagCommit: (dir, tag) => tagCommitIn(root, dir, tag),
+    committed,
   });
+  if (pending.length > 0) console.log(`waiting for the owner of the repository:\n${pending.join('\n')}`);
   if (failures.length === 0) console.log('structure check passed');
   else {
     console.error(`structure check failed:\n${failures.join('\n')}`);

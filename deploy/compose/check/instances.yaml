@@ -1,0 +1,5 @@
+# The instances file of the check: the profile's Edge instance, and the stub in place of Projects.
+edge:
+  - {address: edge, port: 9444, weight: 1}
+projects:
+  - {address: host.docker.internal, port: 8443, weight: 1}

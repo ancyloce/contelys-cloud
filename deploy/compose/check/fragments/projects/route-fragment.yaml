@@ -1,0 +1,4 @@
+routes:
+  - paths: [/api/v1/projects, /api/v1/projects/*]
+    methods: [GET]
+    auth: anonymous

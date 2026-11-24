@@ -1,0 +1,5 @@
+# The instances file of the single-VM evaluation profile (ADR 0058). Edge's instance is named after
+# its service, and every deployable that the profile runs is reached at host.docker.internal, on the
+# port that it publishes on the Docker host's gateway address.
+edge:
+  - {address: edge, port: 9444, weight: 1}
