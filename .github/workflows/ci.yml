@@ -47,8 +47,22 @@ jobs:
           # The CI access token of the Nx Cloud workspace that nx.json names.
           NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
         run: |
+          targets=lint,test,build,contract-test,scenario-test
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-            npx nx run-many -t lint test build contract-test scenario-test
+            npx nx run-many --targets="$targets"
+            exit
+          fi
+          # A moved submodule pointer reaches Nx as the bare path of its project's root. nx affected
+          # runs no target for that path, while nx show projects --affected counts the project
+          # (Nx 24.0.6), so the step lists the affected projects first and then runs their targets.
+          listed=$(npx nx show projects --affected --base="$BASE" --head="$GITHUB_SHA" --json)
+          projects=$(node -e '
+            const list = process.argv[1].match(/\[[^\]]*\]/);
+            if (!list) { console.error("no list of projects in: " + process.argv[1]); process.exit(1); }
+            process.stdout.write(JSON.parse(list[0]).join(","));' "$listed")
+          if [ -z "$projects" ]; then
+            echo "No project is affected."
           else
-            npx nx affected -t lint test build contract-test scenario-test --base="$BASE" --head="$GITHUB_SHA"
+            echo "Affected projects: $projects"
+            npx nx run-many --targets="$targets" --projects="$projects"
           fi
