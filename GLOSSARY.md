@@ -104,9 +104,17 @@ _Avoid_: Hard revocation, instant revocation
 A counter that an authority raises with every strict revocation, so that a decision made under a lower value can be refused.
 _Avoid_: Epoch, generation
 
+**Minimum authority version**:
+The lowest authority version that a registered domain service still accepts for one principal or one membership.
+_Avoid_: Floor, fence
+
 **Write barrier**:
 The check inside a domain service's commit that refuses a protected write made under a revoked authority version.
 _Avoid_: Fence, commit admission, commit barrier
+
+**Registered domain service**:
+A domain service that holds protected writes, so that every authority installs its minimum authority versions there and waits for its acknowledgement.
+_Avoid_: Participant, subscriber
 
 ### Organizations
 
