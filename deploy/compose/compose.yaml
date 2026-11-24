@@ -4,7 +4,7 @@
 # Every service runs on a network of its own, so no container reaches another one's ports. Services
 # reach each other only through ports published on the Docker host's gateway address, HOST_GATEWAY,
 # which no other host reaches. Edge's control listener is published on the host's loopback address
-# alone, for the liveness probe.
+# alone, for the liveness probe. The one-shot render is the exception, below.
 name: contelys
 
 services:
@@ -14,8 +14,16 @@ services:
     image: ${TOOLING_IMAGE}
     command: [render]
     user: "636:636"
-    network_mode: none
+    # The trial load of rendering starts a throwaway Edge through the Docker engine and reads its
+    # control listener on the host's loopback address (Edge ADR 0004). So this service alone gets the
+    # engine's socket, which gives it control of the host, and the host's network, and it exits
+    # after each rendering.
+    group_add: ["${DOCKER_GID}"]
+    network_mode: host
+    environment:
+      EDGE_IMAGE: ${EDGE_IMAGE}
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./installation.yaml:/etc/contelys/installation.yaml:ro
       - ./instances.yaml:/etc/contelys/instances.yaml:ro
       - ./state:/state
