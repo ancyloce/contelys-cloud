@@ -24,6 +24,12 @@
       "inputs": [
         "own"
       ]
+    },
+    "scenario-test": {
+      "cache": true,
+      "inputs": [
+        "own"
+      ]
     }
   },
   "nxCloudId": "6aff3826cf6dbb1bfe99424e",
