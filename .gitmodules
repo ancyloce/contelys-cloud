@@ -9,7 +9,7 @@
 	url = ../contelys-cloud-identity.git
 [submodule "services/notifications"]
 	path = services/notifications
-	url = https://github.com/ancyloce/contelys-cloud-notifications.git
+	url = ../contelys-cloud-notifications.git
 [submodule "services/organization-access"]
 	path = services/organization-access
-	url = https://github.com/ancyloce/contelys-cloud-organization-access.git
+	url = ../contelys-cloud-organization-access.git
