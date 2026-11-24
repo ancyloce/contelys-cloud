@@ -1,0 +1,57 @@
+# The single-VM evaluation profile (Edge detailed design, section 08). `tooling compose <dir>` writes
+# this file with its .env, which names the images that the version manifest pins.
+#
+# Every service runs on a network of its own, so no container reaches another one's ports. Services
+# reach each other only through ports published on the Docker host's gateway address, HOST_GATEWAY,
+# which no other host reaches. Edge's control listener is published on the host's loopback address
+# alone, for the liveness probe.
+name: contelys
+
+services:
+  # Renders Edge's configuration before Edge starts, from the tooling image of the set (ADR 0058).
+  # A route change is `docker compose run --rm render`, which Edge applies without a restart.
+  render:
+    image: ${TOOLING_IMAGE}
+    command: [render]
+    user: "636:636"
+    network_mode: none
+    volumes:
+      - ./installation.yaml:/etc/contelys/installation.yaml:ro
+      - ./instances.yaml:/etc/contelys/instances.yaml:ro
+      - ./state:/state
+
+  edge:
+    image: ${EDGE_IMAGE}
+    depends_on:
+      render:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    # The drain limit: nginx stops within 120 s, and Docker outlasts it (section 08).
+    stop_grace_period: 125s
+    networks: [edge]
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - "443:9443"
+      - "127.0.0.1:9090:9090"
+    # config.yaml and the trust store as files, and the instance's directory, whose apisix.yaml the
+    # renderer renames into place (Edge ADR 0003).
+    volumes:
+      - type: bind
+        source: ./state/rendered/config.yaml
+        target: /usr/local/apisix/conf/config.yaml
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./state/secrets/ca.crt
+        target: /etc/edge/ca.crt
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./state/rendered/edge
+        target: /etc/edge/routes
+        read_only: true
+        bind: {create_host_path: false}
+
+networks:
+  edge: {}

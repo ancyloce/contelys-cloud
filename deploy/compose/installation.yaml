@@ -1,0 +1,6 @@
+# The installation file (Edge detailed design, section 03). Replace the two hostnames with names that
+# reach this VM. Without load-balancer addresses, Edge's external listener accepts TLS directly.
+application_hostname: app.contelys.localhost
+authentication_hostname: auth.contelys.localhost
+load_balancer_addresses: []
+collector_addresses: []
