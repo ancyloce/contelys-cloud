@@ -1,0 +1,16 @@
+# The tooling image's build context is the root of the parent repository, and only what the image
+# carries enters it.
+*
+!version-manifest.yaml
+!contracts/openapi
+!deploy/compose/compose.yaml
+!deploy/compose/instances.yaml
+!deploy/compose/installation.yaml
+!deploy/tooling/tooling.sh
+!platform/edge/go.mod
+!platform/edge/go.sum
+!platform/edge/cmd
+!platform/edge/internal
+!services/*/route-fragment.yaml
+!platform/*/route-fragment.yaml
+!apps/*/route-fragment.yaml

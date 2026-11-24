@@ -26,7 +26,7 @@ CI (`.github/workflows/ci.yml`) runs the structure check, its tests and `nx affe
 
 The target names are fixed: `lint`, `test`, `build`, `contract-test`, `scenario-test`, `image` and `breaking`. The table under "Nx" in the standard says what each does and which projects have it. A target runs its project's whole command. To run a single test, call the project's own tool in the project directory, for a Go project `GOWORK=off go test ./<package> -run <TestName>`.
 
-The structure check enforces the 11 statements under "Structure check" in the standard. It fails on statements 8 and 10 until `CODEOWNERS` exists and every deployable is a submodule. Both wait for the owner of the repository, so leave those two failing and treat a failure on any other statement as a defect. Phase 1 commits no placeholder project and no empty directory such as `deploy/ansible/`: they stay in the working copy, and the check leaves a project that is neither committed nor mounted to statement 10.
+The structure check enforces the 11 statements under "Structure check" in the standard. Two findings wait for the owner of the repository and do not fail it: a missing `CODEOWNERS` (statement 8) and a deployable that is neither mounted nor committed (statement 10). It lists them as waiting, and every failure it reports is a defect. Phase 1 commits no placeholder project and no empty directory such as `deploy/ansible/`: they stay in the working copy, and the check leaves a project that is neither committed nor mounted to statement 10.
 
 ## Architecture
 
