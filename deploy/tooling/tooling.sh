@@ -27,9 +27,10 @@ fail() {
   exit 1
 }
 
-# digest prints the image digest that the version manifest pins for the deployable $1.
+# digest prints the image digest that the version manifest pins for the deployable $1, quoted as the
+# layout standard writes it or plain.
 digest() {
-  sed -n "s/^  $1: {version: [^,]*, digest: \([^,}]*\)[,}].*$/\1/p" "$SET/version-manifest.yaml"
+  sed -n "s/^  $1: {version: [^,]*, digest: \"\{0,1\}\([^,}\"]*\)\"\{0,1\}[,}].*$/\1/p" "$SET/version-manifest.yaml"
 }
 
 # gateway prints the address of the default route, which is the Docker host on the default bridge:

@@ -9,11 +9,16 @@ services:
       - ./check/fragments:/opt/contelys/fragments:ro
       - ./check/contracts:/opt/contelys/contracts:ro
 
+  # The certificate authority is created at the first rendering (Edge detailed design, section 08), so
+  # the stub's certificate waits for render instead of creating a second authority beside it.
   projects-certificate:
     image: ${TOOLING_IMAGE}
     command: [certificate, projects]
     user: "636:636"
     network_mode: none
+    depends_on:
+      render:
+        condition: service_completed_successfully
     volumes:
       - ./state:/state
 
