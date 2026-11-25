@@ -54,6 +54,10 @@ _Avoid_: Umbrella repository
 The repository of one deployable, or the one that holds the shared contracts.
 _Avoid_: Component repository, module
 
+**Operator**:
+A person who installs and runs an installation of Contelys: the SaaS team, or a customer's IT for a private installation. An operator acts through the installation's tools and operator commands, not through a role in an organization.
+_Avoid_: Admin (a role on an organization), administrator
+
 ### Access
 
 **Identity provider**:
