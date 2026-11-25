@@ -54,7 +54,7 @@ jobs:
           # The CI access token of the Nx Cloud workspace that nx.json names.
           NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
         run: |
-          targets=lint,test,build,contract-test,scenario-test
+          targets=lint,test,build,contract-test,scenario-test,breaking
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
             npx nx run-many --targets="$targets"
             exit
