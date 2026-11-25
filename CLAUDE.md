@@ -19,7 +19,7 @@ node --test --test-name-pattern='<pattern>' tools/structure-check.test.mjs   # o
 node --test .claude/hooks/git-writes.test.mjs # the tests of the hook that refuses Git writes
 npx nx run <project>:<target>                 # one target of one project
 npx nx run-many -t lint test build            # those targets of every project
-npx nx affected -t lint test build contract-test scenario-test   # the targets that a change affects
+npx nx affected -t lint test build contract-test scenario-test breaking   # the targets that a change affects
 ~~~
 
 CI (`.github/workflows/ci.yml`) runs the structure check, its tests and `nx affected`.
