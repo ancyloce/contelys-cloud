@@ -49,6 +49,7 @@ contelys-cloud/                          the parent repository: the Nx workspace
 │   ├── package.json                     the contracts as the npm package @contelys/contracts
 │   ├── project.json
 │   ├── access/
+│   │   ├── access-file.schema.json      the format of every access file
 │   │   └── <target slug>.yaml           who may call the operations of one deployable
 │   ├── events/                          Protobuf event schemas, one buf module
 │   │   └── contelys/
@@ -128,11 +129,12 @@ contelys-cloud-<slug>/                   mounted at services/<slug>/, platform/<
 | `apps/authoring/` | Authoring, mounted from the sub-repository `contelys-cloud-authoring`: the source of the authoring app and the `Dockerfile` of the image that serves it ([ADR 0013](./adr/0013-authoring-single-page-app.md), [ADR 0041](./adr/0041-authoring-app-static-file-host.md)). |
 | `contracts/` | The shared contracts, mounted from the sub-repository `contelys-cloud-contracts`. |
 | `contracts/openapi/<slug>/` | The OpenAPI contract of one domain service, as one file `openapi.yaml` in OpenAPI 3.0.3, which oapi-codegen reads in full. Edge, Authoring and Public Delivery have no contract directory. |
-| `contracts/openapi/shared/` | Contracts that several deployables serve, such as the operation that installs a minimum authority version in every registered domain service ([ADR 0068](./adr/0068-minimum-authority-versions-are-installed-through-one-shared-operation.md)), and `problem.yaml`, the one error body of [ADR 0054](./adr/0054-one-error-body-in-every-contract.md), to which every contract refers. The platform team owns them. |
+| `contracts/openapi/shared/` | Contracts that several deployables serve: `minimum-authority-version.yaml`, the operation that installs a minimum authority version in every registered domain service ([ADR 0068](./adr/0068-minimum-authority-versions-are-installed-through-one-shared-operation.md)), and `problem.yaml`, the one error body of [ADR 0054](./adr/0054-one-error-body-in-every-contract.md), to which every contract refers. The platform team owns them. |
 | `contracts/events/` | Protobuf event schemas, as one buf module. |
 | `contracts/jobs/` | The job-request contract of Workers: the request API, the outcome report and the payload of each worker class. |
 | `contracts/buf.yaml` | The buf lint and breaking-change rules for event schemas. |
 | `contracts/access/<slug>.yaml` | The access file of one deployable: the callers that may use each of its operations, and whether it has protected writes (ADR 0058). The deployable's team owns it. |
+| `contracts/access/access-file.schema.json` | The JSON Schema of every access file: `protected_writes`, and for each operation, keyed by its `operationId`, the slugs of its callers. The platform team owns it. |
 | `contracts/go.mod` and `contracts/package.json` | The contracts as a Go module and as an npm package, released at their version tag (ADR 0060). |
 | `deploy/ansible/` | Deployment code for installations on VMs. |
 | `deploy/compose/` | Deployment code for the single-VM evaluation profile. |
@@ -525,7 +527,7 @@ The `build` command discards its output with `-o /dev/null`. Without it, `go bui
 /tools/      @contelys/platform
 ~~~
 
-The sub-repository of the contracts has a `CODEOWNERS` of its own. In it the team of a domain service owns `openapi/<slug>/`, `events/contelys/<slug with underscores>/` and `access/<slug>.yaml`, and the platform team owns the rest, which includes `jobs/`, `openapi/shared/`, `buf.yaml`, `go.mod` and `package.json`. A later line overrides an earlier one, so the general line comes first:
+The sub-repository of the contracts has a `CODEOWNERS` of its own. In it the team of a domain service owns `openapi/<slug>/`, `events/contelys/<slug with underscores>/` and `access/<slug>.yaml`, and the platform team owns the rest, which includes `jobs/`, `openapi/shared/`, `access/access-file.schema.json`, `buf.yaml`, `go.mod` and `package.json`. A later line overrides an earlier one, so the general line comes first:
 
 ~~~text
 *                               @contelys/platform
@@ -643,6 +645,8 @@ A product version is a commit of `main` that the platform team tags `product/<pr
 | Code that every Go domain service shares | `libs/service/`, released as a new library version |
 | The authoring app | The sub-repository `contelys-cloud-authoring`, mounted at `apps/authoring/` |
 | The API contract of a domain service | `openapi/<slug>/` in the sub-repository `contelys-cloud-contracts`, mounted at `contracts/` |
+| A contract that several deployables serve | `openapi/shared/` in the sub-repository `contelys-cloud-contracts` |
+| Who may call a deployable's operations, and whether it has protected writes | Its access file, `access/<slug>.yaml` in the sub-repository `contelys-cloud-contracts`, in the format of `access/access-file.schema.json` |
 | An event schema | `events/contelys/<slug with underscores>/v1/` in the sub-repository `contelys-cloud-contracts` |
 | The job-request contract of Workers | `jobs/` in the sub-repository `contelys-cloud-contracts` |
 | Installing or upgrading on VMs | `deploy/ansible/` |
