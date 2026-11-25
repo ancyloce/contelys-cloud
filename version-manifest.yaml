@@ -7,7 +7,7 @@ deployables:
   collaboration: {version: null, digest: null}
   components: {version: null, digest: null}
   content: {version: null, digest: null}
-  edge: {version: null, digest: null}
+  edge: {version: v0.1.1, digest: sha256:185c5abb7a4448e558b41e33902cd81be8a9f358b781ca1b2eca694b6678fe23}
   event-center: {version: null, digest: null}
   identity: {version: null, digest: null}
   notifications: {version: null, digest: null}
