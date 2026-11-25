@@ -5,12 +5,16 @@
 #                             manifest pins; docker compose up then starts it. It needs the Docker
 #                             socket mounted, to learn the group that may use it
 #   tooling render            creates the certificate authority at the first start, issues Edge's
-#                             certificate and renders Edge's configuration into /state
+#                             certificates and renders Edge's configuration into /state
+#   tooling confirm           confirms that the running Edge applied the rendered revision, through
+#                             its internal and control listeners on the host's loopback address
+#   tooling apply             renders, then confirms: a route change
 #   tooling certificate <name>  issues a certificate for the workload <name> from the authority
 #
-# render and certificate run as the user apisix (uid 636), so that Edge can read what they write.
-# render also needs the Docker socket, the host's network and EDGE_IMAGE, the pinned image of Edge,
-# because its trial load starts a throwaway Edge through the Docker engine (Edge ADR 0004).
+# render, confirm and certificate run as the user apisix (uid 636), so that Edge can read what they
+# write. render also needs the Docker socket, the host's network and EDGE_IMAGE, the pinned image of
+# Edge, because its trial load starts a throwaway Edge through the Docker engine (Edge ADR 0004), and
+# confirm needs the host's network (Edge ADR 0005).
 set -eu
 
 SET=/opt/contelys
@@ -112,10 +116,19 @@ render() {
   authentication=$(setting authentication_hostname)
   [ -n "$application" ] && [ -n "$authentication" ] || fail "render: the installation file names no hostnames"
   issue "$STATE/secrets" application "$application" "$authentication"
+  # Edge's own certificate, for the name edge, serves its internal listener.
+  issue "$STATE/secrets" edge edge
   cp "$CA/ca.crt" "$STATE/secrets/ca.crt"
   edge render --instances /etc/contelys/instances.yaml --installation /etc/contelys/installation.yaml \
     --fragments "$SET/fragments" --contracts "$SET/contracts" --secrets "$STATE/secrets" --revision "$COMMIT" \
     --image "$EDGE_IMAGE" --out "$STATE/rendered"
+}
+
+# confirm reads the fixed-response route of the profile's one Edge instance, named edge in the
+# instances file, and the ids that its control listener reports (Edge detailed design, section 03).
+confirm() {
+  edge confirm --out "$STATE/rendered" --instance edge --revision "$COMMIT" \
+    --internal 127.0.0.1:9444 --control 127.0.0.1:9090 --secrets "$STATE/secrets"
 }
 
 certificate() {
@@ -127,6 +140,9 @@ certificate() {
 case "${1:-}" in
   compose) [ $# -eq 2 ] || fail "usage: tooling compose <dir>"; compose "$2" ;;
   render) [ $# -eq 1 ] || fail "usage: tooling render"; render ;;
+  confirm) [ $# -eq 1 ] || fail "usage: tooling confirm"; confirm ;;
+  # Not render && confirm: within an AND-OR list sh ignores set -e, also in the functions it calls.
+  apply) [ $# -eq 1 ] || fail "usage: tooling apply"; render; confirm ;;
   certificate) [ $# -eq 2 ] || fail "usage: tooling certificate <name>"; certificate "$2" ;;
-  *) fail "usage: tooling compose <dir> | render | certificate <name>" ;;
+  *) fail "usage: tooling compose <dir> | render | confirm | apply | certificate <name>" ;;
 esac
