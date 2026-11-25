@@ -38,6 +38,13 @@ jobs:
       - name: Tests of the structure check
         if: ${{ !cancelled() }}
         run: node --test tools/structure-check.test.mjs
+      # The image ubuntu-24.04 pins Docker 28.0.4, which can give one host port both to a mapping on
+      # 127.0.0.1 and to one on 0.0.0.0 (moby/moby#50054), so Edge's scenarios could not start their
+      # containers: "address already in use" (run 45649147899). Edge's own pipeline runs the same
+      # script, which replaces an engine older than 28.3.0 and changes nothing otherwise.
+      - name: Docker engine
+        if: ${{ !cancelled() }}
+        run: bash platform/edge/.github/scripts/docker-engine.sh
       - name: Targets that the change affects
         if: ${{ !cancelled() }}
         env:
