@@ -27,6 +27,8 @@ npm ci                                        # install Nx, the only root depend
 node tools/structure-check.mjs                # the structure check
 node --test tools/structure-check.test.mjs    # the tests of the structure check
 node --test --test-name-pattern='<pattern>' tools/structure-check.test.mjs   # only the tests whose name matches
+node tools/doc-check.mjs <file>...            # the checks of Markdown documents
+node --test tools/doc-check.test.mjs          # the tests of the document check
 node --test .claude/hooks/git-writes.test.mjs # the tests of the hook that refuses Git writes
 node --test .claude/hooks/deny-env-read.test.mjs   # the tests of the hook that refuses reading secrets
 npx nx run <project>:<target>                 # one target of one project
@@ -35,6 +37,8 @@ npx nx affected -t lint test build contract-test scenario-test breaking   # the 
 ~~~
 
 CI (`.github/workflows/ci.yml`) runs the structure check, its tests and `nx affected`.
+
+After each Edit or Write of a Markdown file in this repository, the `PostToolUse` hook in `.claude/settings.json` runs `tools/doc-check.mjs` on it and shows its findings to the agent. The script reports a code fence that is never closed, a second title or a skipped heading level, a table row with the wrong number of cells or an escaped pipe, a semicolon in a Mermaid sequence message, a relative link to a missing file, and a cited decision record that does not exist. It leaves links and citations under `docs/archive/` unchecked. The hook skips files outside the repository and in its worktrees, so to check a staged copy, run `node tools/doc-check.mjs --as <its path in the repository> <staged file>`.
 
 When a target's output is evidence, run it with `--outputStyle=static`, as in `npx nx run-many -t lint test build --outputStyle=static`, and add `--skip-nx-cache` so that the tools run again. Nx 24 detects an AI agent and then defaults to `summary`, which prints only run counts, and a cached result replays old output.
 

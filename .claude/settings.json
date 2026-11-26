@@ -23,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in *.md) npx markdown-link-check -q \"$f\";; *.go) gofmt -l \"$f\";; esac"
+            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in *.md) node \"$CLAUDE_PROJECT_DIR/tools/doc-check.mjs\" --hook \"$f\";; *.go) gofmt -l \"$f\";; esac"
           }
         ]
       }
