@@ -35,7 +35,7 @@ FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af6
 RUN apt-get update && apt-get install --yes --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 # The commit of the parent repository that the image was built from, which is the configuration
 # revision; the image's own reference, which the Compose profile runs; and the registry of the
-# deployables' images until the organization exists (D2).
+# deployables' images, under the owner's personal account (D2).
 ARG COMMIT=unknown
 ARG TOOLING_IMAGE=contelys/tooling:${COMMIT}
 ARG REGISTRY=ghcr.io/ancyloce
