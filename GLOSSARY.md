@@ -51,7 +51,7 @@ The repository that brings the sub-repositories together and records which commi
 _Avoid_: Umbrella repository
 
 **Sub-repository**:
-The repository of one deployable, or the one that holds the shared contracts.
+The repository of one deployable, of the shared contracts or of the shared service library.
 _Avoid_: Component repository, module
 
 **Operator**:

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-`contelys-cloud` is the parent repository of Contelys, a content creation and publishing platform delivered as SaaS and as private installations. It is an Nx workspace that mounts 20 sub-repositories as Git submodules: the 19 deployables and the shared contracts. It also holds what every team shares: the documents, the version manifest, the shared Go service library (`libs/service/`), the deployment code (`deploy/`) and the repository-level scripts (`tools/`).
+`contelys-cloud` is the parent repository of Contelys, a content creation and publishing platform delivered as SaaS and as private installations. It is an Nx workspace that mounts 21 sub-repositories as Git submodules: the 19 deployables, the shared contracts and the shared Go service library (`libs/service/`). It also holds what every team shares: the documents, the version manifest, the deployment code (`deploy/`) and the repository-level scripts (`tools/`).
 
 The design is ahead of the code. A project gains its targets with its first code, so a `project.json` may have none: `npx nx show project <name>` lists the ones that exist. The "Status" paragraph of `docs/LAYOUT.md` records which steps of the standard are applied.
 
@@ -89,7 +89,7 @@ Before you fix the findings of a code review, write them under the "Comments" he
 
 ## Repository rules
 
-The repository layout standard, `docs/LAYOUT.md`, takes precedence over the Nx guidelines below. Every target is an explicit command in `project.json`. No Nx plugin or generator is added to scaffold or run a project, and the root `package.json` pins only Nx. Each deployable and the shared contracts have their own sub-repository, mounted in this parent repository as a Git submodule (`docs/adr/0045-parent-repository-with-submodules.md`). The owner of the repository adds submodules and only CI moves their pointers.
+The repository layout standard, `docs/LAYOUT.md`, takes precedence over the Nx guidelines below. Every target is an explicit command in `project.json`. No Nx plugin or generator is added to scaffold or run a project, and the root `package.json` pins only Nx. Each deployable, the shared contracts and the shared service library have their own sub-repository, mounted in this parent repository as a Git submodule (`docs/adr/0045-parent-repository-with-submodules.md`, `docs/adr/0069-the-shared-service-library-has-its-own-repository.md`). The owner of the repository adds submodules and only CI moves their pointers.
 
 Only the owner of the repository writes history, here and in every sub-repository: staging (`add`, `rm`, `mv`), commits, stashes, resets, merges, rebases, cherry-picks, reverts, tags, forced branch moves and pushes, and the same operations through GitHub: merging a pull request, creating a release, syncing a fork, and API writes to Git data or file contents. An agent may do the rest, such as reading, `fetch`, `pull` and `clone`, branches, checkouts and worktrees, and the GitHub CLI for pull requests and issues. It leaves its changes unstaged, lists the changed files and proposes the commit message, even when asked to commit. The hook `.claude/hooks/git-writes.mjs`, registered in `.claude/settings.json`, refuses the owner's operations. It matches the text of a command, so it stops accidental writes, not deliberate ones: never route one of them through an alias, a script or another tool.
 
