@@ -28,6 +28,7 @@ node tools/structure-check.mjs                # the structure check
 node --test tools/structure-check.test.mjs    # the tests of the structure check
 node --test --test-name-pattern='<pattern>' tools/structure-check.test.mjs   # only the tests whose name matches
 node --test .claude/hooks/git-writes.test.mjs # the tests of the hook that refuses Git writes
+node --test .claude/hooks/deny-env-read.test.mjs   # the tests of the hook that refuses reading secrets
 npx nx run <project>:<target>                 # one target of one project
 npx nx run-many -t lint test build            # those targets of every project
 npx nx affected -t lint test build contract-test scenario-test breaking   # the targets that a change affects
@@ -43,7 +44,7 @@ The structure check enforces the 11 statements under "Structure check" in the st
 
 ### Shell conventions
 
-The Bash tool runs zsh. Quote every glob, or start the command with `setopt nullglob`, because an unmatched glob aborts the command. Avoid zsh-only expansions such as `${(f)…}` and glob qualifiers such as `*(N/)`, which the safety check rejects or zsh refuses: run a loop under `bash -c '…'` or pipe a list into `while read -r`. Do not nest heredocs. Write multi-line content with the Write tool, then run it as one plain command. Do not chain unrelated commands with `&&` or `;` in one call, because a hook or the classifier that refuses one part refuses the whole call. Never read a `.env` file or print a process's environment, because they hold secrets. No hook enforces this in this repository.
+The Bash tool runs zsh. Quote every glob, or start the command with `setopt nullglob`, because an unmatched glob aborts the command. Avoid zsh-only expansions such as `${(f)…}` and glob qualifiers such as `*(N/)`, which the safety check rejects or zsh refuses: run a loop under `bash -c '…'` or pipe a list into `while read -r`. Do not nest heredocs. Write multi-line content with the Write tool, then run it as one plain command. Do not chain unrelated commands with `&&` or `;` in one call, because a hook or the classifier that refuses one part refuses the whole call. Never read a `.env` file or print a process's environment, because they hold secrets. The hook `.claude/hooks/deny-env-read.sh`, registered in `.claude/settings.json`, refuses a command that names a `.env` file, a bare `env`, `printenv`, `/proc/*/environ`, `docker inspect` without `--format`, `docker compose config` and an `exec … env`. It matches the text of the whole command, so a comment or a `grep` pattern that names a `.env` file is refused too. Without `jq` it refuses every command.
 
 ## Architecture
 
