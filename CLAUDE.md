@@ -8,6 +8,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The design is ahead of the code. A project gains its targets with its first code, so a `project.json` may have none: `npx nx show project <name>` lists the ones that exist. The "Status" paragraph of `docs/LAYOUT.md` records which steps of the standard are applied.
 
+## Parallel sessions
+
+Other Claude Code sessions may be editing this repository and its sub-repositories at the same time. Git shows none of their changes to documents, because documents are untracked, so check more than Git before you start a ticket:
+
+1. Run `git status` and `git log -5` in each repository that the ticket touches, with `git -C <project directory>` for a sub-repository, and list the files changed in the last hour with `find <directory> -mmin -60`.
+2. Run `ListAgents`. If a busy session works on the same deployable, ask it with `SendMessage` which tickets and files it holds.
+3. Read the ticket's `**Claimed by:**` line. A ticket that has one belongs to the session it names.
+4. Before you write code, add `**Claimed by:** <first eight characters of $CLAUDE_CODE_SESSION_ID>, <date>` below the ticket's `**Status:**` line, which keeps its five triage values. Remove the line when the ticket is resolved.
+
+If a file changes under you, stop, re-read it and reconcile the two versions. Never overwrite another session's work: before you copy a file from a staging tree back into the main checkout, check that the checkout's copy still has the hash you recorded.
+
 ## Commands
 
 ~~~sh
@@ -24,9 +35,15 @@ npx nx affected -t lint test build contract-test scenario-test breaking   # the 
 
 CI (`.github/workflows/ci.yml`) runs the structure check, its tests and `nx affected`.
 
+When a target's output is evidence, run it with `--outputStyle=static`, as in `npx nx run-many -t lint test build --outputStyle=static`, and add `--skip-nx-cache` so that the tools run again. Nx 24 detects an AI agent and then defaults to `summary`, which prints only run counts, and a cached result replays old output.
+
 The target names are fixed: `lint`, `test`, `build`, `contract-test`, `scenario-test`, `image` and `breaking`. The table under "Nx" in the standard says what each does and which projects have it. A target runs its project's whole command. To run a single test, call the project's own tool in the project directory, for a Go project `GOWORK=off go test ./<package> -run <TestName>`.
 
 The structure check enforces the 11 statements under "Structure check" in the standard. Two findings wait for the owner of the repository and do not fail it: a missing `CODEOWNERS` (statement 8) and a deployable that is neither mounted nor committed (statement 10). It lists them as waiting, and every failure it reports is a defect. Phase 1 commits no placeholder project and no empty directory such as `deploy/ansible/`: they stay in the working copy, and the check leaves a project that is neither committed nor mounted to statement 10.
+
+### Shell conventions
+
+The Bash tool runs zsh. Quote every glob, or start the command with `setopt nullglob`, because an unmatched glob aborts the command. Avoid zsh-only expansions such as `${(f)…}` and glob qualifiers such as `*(N/)`, which the safety check rejects or zsh refuses: run a loop under `bash -c '…'` or pipe a list into `while read -r`. Do not nest heredocs. Write multi-line content with the Write tool, then run it as one plain command. Do not chain unrelated commands with `&&` or `;` in one call, because a hook or the classifier that refuses one part refuses the whole call. Never read a `.env` file or print a process's environment, because they hold secrets. No hook enforces this in this repository.
 
 ## Architecture
 
@@ -60,6 +77,10 @@ The five default triage labels, recorded as a `Status:` line in each issue file.
 ### Domain docs
 
 One `GLOSSARY.md` at the root, for every team. System-wide decision records are in `docs/adr/`. A sub-repository keeps its detailed design in its own `docs/DESIGN.md` and the decision records that bind it alone in its own `docs/adr/`. See `docs/agents/domain.md`.
+
+### Review findings and links
+
+Before you fix the findings of a code review, write them under the "Comments" heading of the ticket's file. Give each finding its axis, Standards or Spec, its date and the reviewing session, so that the findings survive the session. Ticket numbers repeat across deployables, so the ticket's own file is the one unambiguous place for them. Never write the target of a link to a decision record or a document from memory. Confirm each path with `ls` first, and cite a sub-repository's record with its glossary name, as in "Edge ADR 0003".
 
 ## Repository rules
 
