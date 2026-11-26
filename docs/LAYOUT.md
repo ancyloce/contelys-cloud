@@ -384,7 +384,7 @@ services/<slug>/                         the sub-repository contelys-cloud-<slug
 └── docs/
 ~~~
 
-The package is `httpapi` and not `http`, so that it does not hide `net/http`. What the shared library provides is used where the table under "Layers" allows it: internal-token verification and the health endpoints in `interfaces/`, the outbox, the inbox and River in `infrastructure/`, and configuration loading and telemetry in the composition root.
+The package is `httpapi` and not `http`, so that it does not hide `net/http`. What the shared library provides is used where the table under "Layers" allows it: the verification of internal and workload tokens and the health endpoints in `interfaces/`, the outbox, the inbox and River in `infrastructure/`, and configuration loading and telemetry in the composition root.
 
 ### Node/TypeScript
 
@@ -428,7 +428,7 @@ Code is shared at the narrowest place that covers its users. The first row that 
 | --- | --- |
 | Used by one layer of one deployable | A package of that layer |
 | Used by two layers of one deployable | The inner one of the two layers |
-| A concern that every Go domain service has and that ADR 0034 lists: configuration loading, telemetry, internal-token verification, the outbox and the inbox, River setup, the health endpoints, the idempotency key ([ADR 0062](./adr/0062-creating-posts-take-an-idempotency-key.md)), and the write barrier with the operation that installs a minimum authority version ([ADR 0068](./adr/0068-minimum-authority-versions-are-installed-through-one-shared-operation.md)) | `libs/service/`, used at a pinned version |
+| A concern that every Go domain service has and that ADR 0034 lists: configuration loading, telemetry, the verification of internal and workload tokens (ADR 0052), the outbox and the inbox, River setup, the health endpoints, the idempotency key ([ADR 0062](./adr/0062-creating-posts-take-an-idempotency-key.md)), and the write barrier with the operation that installs a minimum authority version ([ADR 0068](./adr/0068-minimum-authority-versions-are-installed-through-one-shared-operation.md)) | `libs/service/`, used at a pinned version |
 | A message, an operation or a payload that deployables exchange | `contracts/`. Each deployable generates its own code from it |
 | A rule that two domains need | The domain service that owns the fact. The other one calls its contract |
 | A helper that two deployables happen to need | A copy in each of them |
