@@ -45,6 +45,7 @@ contelys-cloud/                          the parent repository: the Nx workspace
 │   ├── .gitattributes
 │   ├── CODEOWNERS                       each team owns its own contract directories
 │   ├── buf.yaml                         lint and breaking-change rules for event schemas
+│   ├── contracts.go                     the OpenAPI files as an embed.FS (ADR 0060)
 │   ├── go.mod                           the contracts as a Go module
 │   ├── package.json                     the contracts as the npm package @contelys/contracts
 │   ├── project.json
