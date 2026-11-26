@@ -13,3 +13,6 @@
 [submodule "services/organization-access"]
 	path = services/organization-access
 	url = ../contelys-cloud-organization-access.git
+[submodule "libs/service"]
+	path = libs/service
+	url = ../contelys-cloud-libs-service.git
