@@ -43,6 +43,7 @@ const GITMODULES = {
   collaboration: submodule('services/collaboration', 'collaboration'),
   contracts: submodule('contracts', 'contracts'),
   edge: submodule('platform/edge', 'edge'),
+  library: submodule('libs/service', 'libs-service'),
   projects: submodule('services/projects', 'projects'),
   workers: submodule('platform/workers', 'workers'),
 };
@@ -65,10 +66,10 @@ const BASE = {
   'platform/edge/.gitattributes': ATTRIBUTES,
   'platform/workers/.gitattributes': ATTRIBUTES,
   'apps/authoring/.gitattributes': ATTRIBUTES,
+  'libs/service/.gitattributes': ATTRIBUTES,
   'contracts/.gitattributes': ATTRIBUTES,
   CODEOWNERS: [
     '# shared paths of the parent repository',
-    '/libs/ @example/platform',
     '/deploy/ @example/platform',
     '',
   ].join('\n'),
@@ -115,9 +116,13 @@ test('1, 2: a project that is neither committed nor mounted waits in statement 1
     'platform/workers/project.json': null,
     'platform/workers/.gitattributes': null,
     'libs/service/project.json': null,
-    '.gitmodules': gitmodulesWith({ workers: null }),
+    'libs/service/.gitattributes': null,
+    '.gitmodules': gitmodulesWith({ workers: null, library: null }),
   });
-  assert.deepEqual(result, { failures: [], pending: ['10. .gitmodules has no entry for platform/workers'] });
+  assert.deepEqual(result, {
+    failures: [],
+    pending: ['10. .gitmodules has no entry for platform/workers', '10. .gitmodules has no entry for libs/service'],
+  });
 });
 
 test('1: a manifest that misses a deployable or lists an unknown one fails', (t) => {
@@ -252,30 +257,32 @@ test('8: a missing CODEOWNERS file waits for the owner and does not fail', (t) =
 });
 
 test('8: a project directory of the parent repository without an owner fails', (t) => {
-  assert.deepEqual(check(t, { CODEOWNERS: '/deploy/ @example/platform\n' }), [
-    '8. libs/service/ is not matched by a pattern with an owner in CODEOWNERS',
-  ]);
-  const unowned = `${BASE.CODEOWNERS}/libs/service/\n`;
-  assert.deepEqual(check(t, { CODEOWNERS: unowned }), [
-    '8. libs/service/ is not matched by a pattern with an owner in CODEOWNERS',
-  ]);
+  // Every project of the table is a sub-repository, so the test adds one that the parent holds.
+  const standard = STANDARD.replace('| `contracts` |', '| `tools-sample` | `tools/sample` | Go |\n| `contracts` |');
+  const changes = { 'docs/LAYOUT.md': standard, 'tools/sample/project.json': JSON.stringify({ name: 'tools-sample' }) };
+  const unowned = ['8. tools/sample/ is not matched by a pattern with an owner in CODEOWNERS'];
+  assert.deepEqual(check(t, changes), unowned);
+  const owned = `${BASE.CODEOWNERS}/tools/ @example/platform\n`;
+  assert.deepEqual(check(t, { ...changes, CODEOWNERS: owned }), []);
+  assert.deepEqual(check(t, { ...changes, CODEOWNERS: `${owned}/tools/sample/\n` }), unowned);
 });
 
 test("8: a sub-repository's directory with an owner fails", (t) => {
-  const owned = `${BASE.CODEOWNERS}/services/projects/ @example/projects\n/platform/ @example/platform\n/contracts/ @example/platform\n`;
+  const owned = `${BASE.CODEOWNERS}/services/projects/ @example/projects\n/platform/ @example/platform\n/libs/ @example/platform\n/contracts/ @example/platform\n`;
   const reason = 'has an owner in CODEOWNERS, but a sub-repository is owned in its own repository';
   assert.deepEqual(check(t, { CODEOWNERS: owned }), [
     `8. services/projects/ ${reason}`,
     `8. platform/edge/ ${reason}`,
     `8. platform/workers/ ${reason}`,
+    `8. libs/service/ ${reason}`,
     `8. contracts/ ${reason}`,
   ]);
 });
 
 test('8: a pattern for everything is allowed when later lines take the sub-repositories out', (t) => {
   const everything = '* @example/platform\n';
-  assert.equal(check(t, { CODEOWNERS: everything }).length, 6);
-  assert.deepEqual(check(t, { CODEOWNERS: `${everything}/services/\n/platform/\n/apps/\n/contracts/\n` }), []);
+  assert.equal(check(t, { CODEOWNERS: everything }).length, 7);
+  assert.deepEqual(check(t, { CODEOWNERS: `${everything}/services/\n/platform/\n/apps/\n/libs/service/\n/contracts/\n` }), []);
 });
 
 test('9: a sandbox directory needs a Dockerfile and an entry in the manifest', (t) => {
@@ -296,11 +303,11 @@ test('10: a missing .gitmodules file fails', (t) => {
 
 test('10: .gitmodules lists exactly the sub-repositories, each with its relative address', (t) => {
   const absolute = submodule('services/projects', 'projects').replace('../', 'https://example.test/');
-  const changed = gitmodulesWith({ edge: null, projects: absolute, library: submodule('libs/service', 'libs-service') });
-  assert.deepEqual(run(t, { '.gitmodules': changed, 'libs/service/.gitattributes': ATTRIBUTES }), {
+  const changed = gitmodulesWith({ edge: null, projects: absolute, ansible: submodule('deploy/ansible', 'ansible') });
+  assert.deepEqual(run(t, { '.gitmodules': changed }), {
     failures: [
       '10. .gitmodules gives services/projects the address https://example.test/contelys-cloud-projects.git instead of ../contelys-cloud-projects.git',
-      '10. .gitmodules lists libs/service, which is not a sub-repository',
+      '10. .gitmodules lists deploy/ansible, which is not a sub-repository',
     ],
     pending: ['10. .gitmodules has no entry for platform/edge'],
   });
@@ -311,6 +318,11 @@ test('10: a deployable without an entry fails when it is committed or has a subm
   const missing = '10. .gitmodules has no entry for platform/edge';
   assert.ok(check(t, changes, { committed: ['platform/edge'] }).includes(missing));
   assert.ok(check(t, changes, { pointers: { 'platform/edge': 'eee555' } }).includes(missing));
+});
+
+test('10: the shared service library committed in the parent repository fails', (t) => {
+  const changes = { '.gitmodules': gitmodulesWith({ library: null }), 'libs/service/.gitattributes': null };
+  assert.deepEqual(check(t, changes, { committed: ['libs/service'] }), ['10. .gitmodules has no entry for libs/service']);
 });
 
 test('11: a sub-repository without the line-ending rule in its .gitattributes fails', (t) => {

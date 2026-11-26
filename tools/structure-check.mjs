@@ -11,6 +11,8 @@ const GITMODULES = '.gitmodules';
 const GITATTRIBUTES = '.gitattributes';
 const LINE_ENDING_RULE = '* text=auto eol=lf';
 const CONTRACTS = 'contracts';
+const LIBRARY = 'libs-service';
+const LIBRARY_DIR = 'libs/service';
 const DEPLOYABLE_PARENTS = ['services', 'platform', 'apps'];
 const WORKERS = 'workers';
 const SANDBOXES = 'platform/workers/sandboxes';
@@ -18,8 +20,9 @@ const NEVER_TRACKED = ['go.work', 'go.work.sum'];
 const SKIPPED_DIRECTORIES = new Set(['.git', 'node_modules', '.nx']);
 
 const isDeployable = (project) => DEPLOYABLE_PARENTS.includes(project.dir.split('/')[0]);
-// The deployables and the contracts each have a repository of their own.
-const isSubRepository = (project) => isDeployable(project) || project.name === CONTRACTS;
+// The deployables, the contracts and the shared service library each have a repository of their
+// own (ADR 0069).
+const isSubRepository = (project) => isDeployable(project) || [CONTRACTS, LIBRARY].includes(project.name);
 const subRepository = (name) => `contelys-cloud-${name}`;
 
 // The "Projects" table of the standard is the list of projects. Nothing is repeated here.
@@ -289,7 +292,7 @@ export function checkStructure(root, { trackedFiles, pointers, tagCommit, commit
   }
 
   // 4. A deployable depends on contracts and on no deployable or libs-service.
-  const forbidden = new Set([...slugs, 'libs-service']);
+  const forbidden = new Set([...slugs, LIBRARY]);
   for (const project of deployables) {
     const json = projectFiles.get(project.name);
     if (!json) continue;
@@ -430,10 +433,10 @@ function tagCommitIn(root, dir, tag) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const staged = git(root, 'ls-files', '--stage', '--', ...DEPLOYABLE_PARENTS, CONTRACTS);
+  const staged = git(root, 'ls-files', '--stage', '--', ...DEPLOYABLE_PARENTS, CONTRACTS, LIBRARY_DIR);
   const gitlinks = staged.map((line) => line.match(/^160000 ([0-9a-f]+) \d\t(.+)$/)).filter(Boolean);
   // The project directories that hold committed files of the parent repository itself.
-  const inProject = new RegExp(`^(?!160000 )\\d+ [0-9a-f]+ \\d\\t((?:${DEPLOYABLE_PARENTS.join('|')})/[^/]+)/`);
+  const inProject = new RegExp(`^(?!160000 )\\d+ [0-9a-f]+ \\d\\t((?:${DEPLOYABLE_PARENTS.join('|')})/[^/]+|${LIBRARY_DIR})/`);
   const committed = [...new Set(staged.map((line) => line.match(inProject)?.[1]).filter(Boolean))];
   const { failures, pending } = checkStructure(root, {
     trackedFiles: git(root, 'ls-files', '--', ...NEVER_TRACKED.map((name) => `:(glob)**/${name}`)),
