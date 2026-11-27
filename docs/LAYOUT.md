@@ -384,7 +384,7 @@ services/<slug>/                         the sub-repository contelys-cloud-<slug
 └── docs/
 ~~~
 
-The package is `httpapi` and not `http`, so that it does not hide `net/http`. What the shared library provides is used where the table under "Layers" allows it: the verification of internal and workload tokens and the health endpoints in `interfaces/`, the outbox, the inbox and River in `infrastructure/`, and configuration loading and telemetry in the composition root.
+The package is `httpapi` and not `http`, so that it does not hide `net/http`. What the shared library provides is used where the table under "Layers" allows it: the verification of internal and workload tokens and the health endpoints in `interfaces/`, the outbox, the inbox, River and the workload tokens that the clients of `infrastructure/clients/` present in `infrastructure/`, and configuration loading and telemetry in the composition root.
 
 ### Node/TypeScript
 
